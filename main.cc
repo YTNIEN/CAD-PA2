@@ -982,7 +982,7 @@ int main(int argc, char** argv)
         }
     }
     //sort these roots by their levels
-    treeRoot.sort(CompareLevel);
+    // treeRoot.sort(CompareLevel);
 #ifdef DEBUG_R
     cout << "//Root Number: " << treeRoot.size() << endl;
     for(listItor = treeRoot.begin();listItor != treeRoot.end(); ++listItor) {
@@ -1008,7 +1008,7 @@ int main(int argc, char** argv)
         queue.push_back(rootGatePtr);
         queuePtr[rootGatePtr->GetLevel()].push_back(rootGatePtr);
 #ifdef DEBUG_DA
-        cout << "Root_" << rootGatePtr -> GetName() << ": ";
+        cout << "Root_" << rootGatePtr -> GetName() << ": " << std::flush;
 #endif
         //push every gate in the tree denoted by its root, rootGatePtr, into
         //queuePtr[]
@@ -1020,7 +1020,7 @@ int main(int argc, char** argv)
                 if((outputGatePtr) -> No_Fanout() == 1) {
                     queue.push_back(outputGatePtr);
 #ifdef DEBUG_DA
-                    cout << outputGatePtr -> GetName() << ", ";
+                    cout << outputGatePtr -> GetName() << ", " << std::flush;
 #endif
                     queuePtr[outputGatePtr -> GetLevel()].push_back(outputGatePtr);
                 }
