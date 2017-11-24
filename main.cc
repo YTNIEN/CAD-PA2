@@ -306,21 +306,24 @@ int main(int argc, char** argv)
     ifstream ifsCkt(argv[1], ifstream::in);
     ifstream ifsCell(argv[2], ifstream::in);
     ofstream ofs(argv[3], ofstream::out);
+    ofstream ofs_path(argv[4], ofstream::out);
 
-    if(argc != 4) {
-        cerr << "Wrong argument number!!" << endl;
+    if(argc != 5) {
+        cerr << "Usage: map <subject_ckt> <cell_lib> <output_ckt> <output_path>" << endl;
         ifsCkt.close();
         ifsCell.close();
         ofs.close();
+        ofs_path.close();
         exit(-1);
     }
-    else if(!ifsCkt || !ifsCell || !ofs) {
+    else if(!ifsCkt || !ifsCell || !ofs || !ofs_path) {
         if(!ifsCkt) cerr << "Cannot open file: " << argv[1] << endl;
         if(!ifsCell) cerr << "Cannot open file: " << argv[2] << endl;
         if(!ofs) cerr << "Cannot create file: " << argv[3] << endl;
         ifsCkt.close(); 
         ifsCell.close();
         ofs.close();
+        ofs_path.close();
         exit(-1);
     }
     //Commencing mission

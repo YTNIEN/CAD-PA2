@@ -1,1 +1,7 @@
 .vscode
+**/*.blif
+**/*.rpt
+**/*.bench
+*.o
+map
+ABC/
