@@ -780,7 +780,7 @@ int main(int argc, char** argv)
         PAUSE();
 #endif
             
-        //Read oen next line, not doing anything
+        //Read oen next line, without doing anything
         std::getline(ifsCell, tempStr);
 
         std::getline(ifsCell, tempStr);
@@ -982,7 +982,7 @@ int main(int argc, char** argv)
         }
     }
     //sort these roots by their levels
-    // treeRoot.sort(CompareLevel);
+    treeRoot.sort(CompareLevel);
 #ifdef DEBUG_R
     cout << "//Root Number: " << treeRoot.size() << endl;
     for(listItor = treeRoot.begin();listItor != treeRoot.end(); ++listItor) {
