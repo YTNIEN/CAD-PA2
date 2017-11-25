@@ -225,7 +225,7 @@ class BFS
         CELL* Cell;
         list<GATE*> CellQueue;
         list<GATE*> SubjQueue;
-        vector<GATE*> InputGateList; 
+        vector<GATE*> InputGateList;
         BFS& operator=(BFS &);
     public:
         BFS(): MaxDelay(0), MaxDelayGate(0), Cell(0) {}
@@ -238,7 +238,9 @@ class BFS
         void SubjPushBack(GATE* gptr) {SubjQueue.push_back(gptr);}
         void CellPopFront() {CellQueue.pop_front();}
         void SubjPopFront() {SubjQueue.pop_front();}
-        void AddInputGate(GATE* gptr) {InputGateList.push_back(gptr);}
+        //void AddInputGate(GATE* gptr) {InputGateList.push_back(gptr);}
+        void IniInputGate(int input_count) {InputGateList.resize(input_count);}
+        void SetInputGate(int idx, GATE* gptr) {InputGateList[idx] = gptr;}
         //Accesser
         int GetMaxDelay() {return MaxDelay;}
         GATE* GetMaxDelayGate() {return MaxDelayGate;}
@@ -256,6 +258,8 @@ class BFS
                 int cellArriTime = 0;
                 //we only want to consider the delay of gates which are not PI nor Root
                 //of other trees
+                cout << InputGateList[i] << endl;
+                cout << InputGateList[i+1] << endl;
                 if(InputGateList[i]-> GetFunc() != G_PI && InputGateList[i] -> No_Fanout() == 1) {
                    cellArriTime = InputGateList[i] ->  GetMCell() -> GetArriTime();
                 }
@@ -985,7 +989,7 @@ int main(int argc, char** argv)
             }
         }
     }
-    //Levelize, or Topalogy Sort
+    // levelize, say topological sort
     unsigned level1 = 0, level2 = 0;
     while(!queue.empty()) {
         inputGatePtr = queue.front();
@@ -1033,11 +1037,11 @@ int main(int argc, char** argv)
     list<BFS*> BFSQueue;
     list<BFS*> BFSOfGate; 
     list<MappingCELL*> MCellQueue;
-    //NEW Mapped Cells
+    // NEW Mapped Cells
     vector<MappingCELL*> MCellPIList;
     vector<MappingCELL*> MCellPOList;
     vector<MappingCELL*> MCellList;
-    //For each root gate of a tree
+    // for each root gate of a tree
     for(listItor = treeRoot.begin();listItor != treeRoot.end(); ++listItor) { 
         GATE* gatePtr = 0;
         GATEPTR rootGatePtr = *listItor;
@@ -1071,6 +1075,7 @@ int main(int argc, char** argv)
             while(!queuePtr[i].empty()) {
                 gatePtr = queuePtr[i].front();
                 queuePtr[i].pop_front();
+                // create a PI for mapping circuit
                 if(gatePtr -> GetFunc() == G_PI) {
                     MappingCELL* PIMCellPtr = new MappingCELL();
                     PIMCellPtr -> SetName(gatePtr->GetName());
@@ -1083,6 +1088,7 @@ int main(int argc, char** argv)
                     MCellList.push_back(PIMCellPtr);
                     continue;
                 }
+                // create a PO for mapping circuit
                 if(gatePtr -> GetFunc() == G_PO) {
                     MappingCELL* POMCellPtr = new MappingCELL();
                     POMCellPtr -> SetName(gatePtr->GetName());
@@ -1098,17 +1104,19 @@ int main(int argc, char** argv)
                     MCellList.push_back(POMCellPtr);
                     continue;
                 }
-                // start Subtree MATCHING
+                // start subtree matching
                 //cout << "To be mapped: " << gatePtr -> GetName() << endl;
                 // brute-forcely, try to match every cell starting at gatePtr
                 for(unsigned j = 0;j < cellList.size(); ++j) {
                     //get the only root in a cell
                     cellGatePtr = cellList[j] -> Fanout(0);
+                    CELL* cell_to_map = cellList[j];
                     //cout << "Cell root: " << cellGatePtr -> GetName() << endl;
 
                     BFSPtr = new BFS();
                     BFSPtr -> CellPushBack(cellGatePtr);
                     BFSPtr -> SubjPushBack(gatePtr);
+                    BFSPtr -> IniInputGate(cell_to_map->No_Fanin());
                     //cout << "Cell Gate: " << BFSPtr -> CellFront() -> GetName() << endl;
                     //cout << "Subj Gate: " << BFSPtr -> SubjFront() -> GetName() << endl;
                     BFSList.push_back(BFSPtr);
@@ -1124,6 +1132,7 @@ int main(int argc, char** argv)
                             //}
                             //cout << endl;
                             BFSPtr -> SetCell(cellList[j]);
+                            cout << cell_to_map->GetName() << endl;
                             BFSPtr -> CalcMaxDelay();
                             BFSOfGate.push_back(BFSPtr);
                             BFSList.pop_front();
@@ -1141,12 +1150,15 @@ int main(int argc, char** argv)
                         GATEPTR cellGatePtr = BFSPtr -> CellFront(); 
                         // reach a PI of cell circuit, go on to match other gates in current cell candidate
                         if(BFSPtr -> CellFront() -> GetFunc() == G_PI) {
-                            BFSPtr -> AddInputGate(subjGatePtr);
+                            // FIXME: set input to BFS corresponding to the input order of cell
+                            BFSPtr -> SetInputGate(cellGatePtr->GetID()-1, subjGatePtr);
+                            //cout << "Set " << subjGatePtr->GetName() << " as input" << cellGatePtr->GetID()-1 << " to " << cell_to_map->GetName() << endl;
+                            //PAUSE();
                             BFSPtr -> CellPopFront();
                             BFSPtr -> SubjPopFront();
                             continue;
                         }
-                        // NEVER mapping any other roots in our circuit or any PO in cell circuit
+                        // NEVER map any other roots in our circuit or any PO in cell circuit
                         if(BFSPtr -> SubjFront() -> No_Fanout() != 1 && 
                                 BFSPtr -> SubjFront() -> GetName() != rootGatePtr -> GetName()) {
                             BFSList.pop_front();
@@ -1182,7 +1194,7 @@ int main(int argc, char** argv)
                                 cout << "> ERROR in Subtree Matching, not NAND nor NOT gate to be mapped" << endl;
                             }
                         }
-                        // function not the same
+                        // function mis-matched, abort current BFS matching
                         else {
                             BFSList.pop_front();
                             delete BFSPtr;
@@ -1216,6 +1228,7 @@ int main(int argc, char** argv)
                 for(int j=0;j<minDelayBFSPtr->No_Fanin();++j) {
                     //To be revised
                     //if(minDelayBFSPtr -> Fanin(j) -> GetFunc() != G_PI) {
+                    // FIXME: correct input order of mapping cell
                         MCellPtr -> AddInputList(minDelayBFSPtr->Fanin(j)->GetMCell());
                     //}
                 }
@@ -1232,7 +1245,6 @@ int main(int argc, char** argv)
                     BFSOfGate.pop_front();
                     delete BFSPtr;
                 }
-                //PAUSE();
             }
         }
         //push back the MCell to root gate
@@ -1452,8 +1464,6 @@ int main(int argc, char** argv)
         //cout << outputMCellPtr -> GetName() << " ";
     }
 
-
-    
 #ifdef DEBUG
     ////Print zone
     cout << "//Here comes our print zone//" << endl;
@@ -1522,6 +1532,7 @@ int main(int argc, char** argv)
     ifsCkt.close();
     ifsCell.close();
     ofs.close();
+    ofs_path.close();
     delete[] queuePtr;
     delete[] MCellQueuePtr;
     for(unsigned i = 0;i < gateList.size(); ++i) {delete gateList[i];}
