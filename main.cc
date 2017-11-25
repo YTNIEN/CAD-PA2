@@ -1,3 +1,5 @@
+/*2017CAP PA2 - Technology Mapping with the Minimum Critical Path Delay
+*/
 #include <iostream>
 #include <cstdlib>
 #include <ctime>
@@ -19,6 +21,8 @@ enum GATEFUNC {G_PI, G_PO, G_PPI, G_PPO, G_NOT, G_AND, G_NAND, G_OR, G_NOR, G_DF
 class GATE;
 class MappingCELL
 {
+    /*(Class that used to) represent a mapping cell (instantiated from cell library).
+    */
     private:
         string Name;
         int ID;
@@ -85,6 +89,12 @@ class MappingCELL
 
 class GATE
 {
+    /*Building blocks of a subject circuit. A GATE object only falls into two categoraies
+    (NAND & NOT), which only denote simple logic functions to express the function of a
+    subject circuit, and is not a real cell instance. In DAGON, the mapping from a set of
+    GATEs to a MappingCELL depends on both what kind of GATEs a MappingCELL consists of
+    and the topology of some part of subject circuit.
+    */
     private:
         string Name;
         unsigned ID;
@@ -146,6 +156,9 @@ class GATE
 
 class CELL
 {
+    /*Standard cell used to map a subject circuit into. Logic function of CELL is also described
+    via a bunch of GATE objects.
+    */
     private:
         string Name;
         unsigned ID;
@@ -203,6 +216,9 @@ class CELL
 
 class BFS
 {
+    /*Class used in DAGON to back-trace from a GATE in subject circuit. GATEs in
+    back-tracing is stored in BFS. 
+    */
     private:
         int MaxDelay;
         GATE* MaxDelayGate;
@@ -291,6 +307,12 @@ inline bool CompareName(const MappingCELL* first, const MappingCELL* second)
 void MappingCELL::SortInputList()
 {
     std::sort(InputList.begin(), InputList.end(), CompareName);
+}
+
+void clean_ss(stringstream& ss)
+{
+    ss.str("");
+    ss.clear();
 }
 
 typedef CELL* CELLPTR;
@@ -733,6 +755,7 @@ int main(int argc, char** argv)
 #endif
             idx = tempStr.find('=');
             //last line of structural info in a Cell
+            // presume last line of cell netlist in output gate
             if(idx == string::npos) {cellPtr -> AddOutput(gateptr);}
         }
          
@@ -757,6 +780,7 @@ int main(int argc, char** argv)
     
     cout << "\n//Re-Parse cell library file: " << argv[2] << endl;
     //PAUSE();
+    // second parsing of cell library
     while(!ifsCell.eof()) {
         std::getline(ifsCell, tempStr);
         if(tempStr[0] == '#' || tempStr[0] == '/') {
@@ -842,11 +866,17 @@ int main(int argc, char** argv)
 
                 gateIterInCell = gateMapInCell.find(inputName);  
                 if(gateIterInCell == gateMapInCell.end()) {
-                    //cout << "NEW INPUT GATE NEVER SEEN!!" << endl;
-                    //cout << ": " << inputName << endl;
+                    // a gate which is a input (PI) of cell
+                    // TODO: change the way to find the order of input in a cell
+                    int input_order;
+                    ss << inputName;
+                    ss >> input_order;
+                    clean_ss(ss);
+
                     inputGatePtr = new GATE();
                     inputGatePtr -> SetName(inputName);
                     inputGatePtr -> SetFunc(G_PI);
+                    inputGatePtr -> SetID(input_order); // use name as input order
                     cellPtr -> AddInput(inputGatePtr);
                     cellPtr -> AddGate(inputGatePtr);
                     gateMapInCell.insert(std::pair<string, GATE*>(inputName, inputGatePtr));
@@ -863,8 +893,8 @@ int main(int argc, char** argv)
                 outputGatePtr -> AddInputList(inputGatePtr);
                 idx = inputNameStr.find(',');
             }
-            //last input gate
-            //erasing any blank front and back
+            // last input gate
+            // erase any blank front and back
             firstPosNotBlank = inputNameStr.find_first_not_of(" ");
             if(firstPosNotBlank != string::npos) {
                 inputNameStr.erase(0, firstPosNotBlank);
@@ -880,11 +910,17 @@ int main(int argc, char** argv)
 
             gateIterInCell = gateMapInCell.find(inputNameStr);  
             if(gateIterInCell == gateMapInCell.end()) {
-                //cout << "NEW INPUT GATE NEVER SEEN!!" << endl;
-                //cout << ": " << inputNameStr << endl;
+                // found a input (PI) of cell
+                // presume (guess) that name of this unseen gate is input order of this cell
+                int input_order;
+                ss << inputNameStr;
+                ss >> input_order;
+                clean_ss(ss);
+                
                 inputGatePtr = new GATE();
                 inputGatePtr -> SetName(inputNameStr);
                 inputGatePtr -> SetFunc(G_PI);
+                inputGatePtr -> SetID(input_order); // use name as input order
                 cellPtr -> AddInput(inputGatePtr);
                 cellPtr -> AddGate(inputGatePtr);
                 gateMapInCell.insert(std::pair<string, GATE*>(inputNameStr, inputGatePtr));
