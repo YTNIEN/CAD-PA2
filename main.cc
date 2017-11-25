@@ -1062,8 +1062,9 @@ int main(int argc, char** argv)
                     MCellList.push_back(POMCellPtr);
                     continue;
                 }
-                //start Subtree MATCHING
+                // start Subtree MATCHING
                 //cout << "To be mapped: " << gatePtr -> GetName() << endl;
+                // brute-forcely, try to match every cell starting at gatePtr
                 for(unsigned j = 0;j < cellList.size(); ++j) {
                     //get the only root in a cell
                     cellGatePtr = cellList[j] -> Fanout(0);
@@ -1078,6 +1079,7 @@ int main(int argc, char** argv)
                     
                     while(!BFSList.empty()) {
                         BFSPtr = BFSList.front();
+                        // found a match
                         if(BFSPtr -> CellEmpty() && BFSPtr -> SubjEmpty()) {
                             //cout << ">>CELL MATCH: " << cellList[j] -> GetName() << endl;
                             //cout << "INPUTS: ";
@@ -1085,10 +1087,8 @@ int main(int argc, char** argv)
                             //    cout << endl << BFSPtr -> Fanin(k) -> GetName() << " =>";
                             //}
                             //cout << endl;
-
                             BFSPtr -> SetCell(cellList[j]);
                             BFSPtr -> CalcMaxDelay();
-
                             BFSOfGate.push_back(BFSPtr);
                             BFSList.pop_front();
                             continue;
@@ -1103,14 +1103,14 @@ int main(int argc, char** argv)
                         }
                         GATEPTR subjGatePtr = BFSPtr -> SubjFront();
                         GATEPTR cellGatePtr = BFSPtr -> CellFront(); 
-                        //reach PI of Cell circuit, One Hit!!
+                        // reach a PI of cell circuit, go on to match other gates in current cell candidate
                         if(BFSPtr -> CellFront() -> GetFunc() == G_PI) {
                             BFSPtr -> AddInputGate(subjGatePtr);
                             BFSPtr -> CellPopFront();
                             BFSPtr -> SubjPopFront();
                             continue;
                         }
-                        //NO mapping any other roots in our circuit or any PO
+                        // NEVER mapping any other roots in our circuit or any PO in cell circuit
                         if(BFSPtr -> SubjFront() -> No_Fanout() != 1 && 
                                 BFSPtr -> SubjFront() -> GetName() != rootGatePtr -> GetName()) {
                             BFSList.pop_front();
@@ -1120,15 +1120,14 @@ int main(int argc, char** argv)
                         BFSPtr -> SubjPopFront();
                         BFSPtr -> CellPopFront();
                         if(subjGatePtr -> GetFunc() == cellGatePtr -> GetFunc()) {
-                            //ASSUME that Cell CKT consists of only NAND and
-                            //NOT gates
+                            // assume that Cell ckt consists of only NAND and NOT
                             if(subjGatePtr -> GetFunc() == G_NOT) {
                                 BFSPtr -> SubjPushBack(subjGatePtr -> Fanin(0));
                                 BFSPtr -> CellPushBack(cellGatePtr -> Fanin(0));
                             }
                             else if(subjGatePtr -> GetFunc() == G_NAND) {
-                                //if both inputs to this NAND gate in Cell
-                                //CKT are PI, we just ignore isomorphism
+                                // if both inputs of this NAND in Cell ckt are PIs, we ignore isomorphism
+                                // so, if any of them is not of PI, duplicate a BFS due to isomorphism
                                 if(cellGatePtr->Fanin(0) -> GetFunc() != G_PI ||
                                         cellGatePtr->Fanin(1) -> GetFunc() != G_PI) {
                                      BFS* isoBFSPtr = new BFS(*BFSPtr);
@@ -1144,9 +1143,10 @@ int main(int argc, char** argv)
                                 BFSPtr -> CellPushBack(cellGatePtr -> Fanin(1));
                             }
                             else {
-                                cout << "//ERROR in Subtree Matching, not NAND nor NOT gate to be mapped!!" << endl;
+                                cout << "> ERROR in Subtree Matching, not NAND nor NOT gate to be mapped" << endl;
                             }
                         }
+                        // function not the same
                         else {
                             BFSList.pop_front();
                             delete BFSPtr;
@@ -1170,6 +1170,7 @@ int main(int argc, char** argv)
                     //cout << "----" << endl;
                 }
                 
+                // create a mapping cell, which leads to the shortest delay
                 MappingCELL* MCellPtr = new MappingCELL();
                 MCellPtr -> SetName(gatePtr->GetName());
                 MCellPtr -> SetDelay(minDelayBFSPtr -> GetCell() -> GetDelay());
