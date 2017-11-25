@@ -258,8 +258,7 @@ class BFS
                 int cellArriTime = 0;
                 //we only want to consider the delay of gates which are not PI nor Root
                 //of other trees
-                cout << InputGateList[i] << endl;
-                cout << InputGateList[i+1] << endl;
+                //cout << InputGateList[i] << "->" <<InputGateList[i]->GetName() <<  endl;
                 if(InputGateList[i]-> GetFunc() != G_PI && InputGateList[i] -> No_Fanout() == 1) {
                    cellArriTime = InputGateList[i] ->  GetMCell() -> GetArriTime();
                 }
@@ -1150,7 +1149,6 @@ int main(int argc, char** argv)
                         GATEPTR cellGatePtr = BFSPtr -> CellFront(); 
                         // reach a PI of cell circuit, go on to match other gates in current cell candidate
                         if(BFSPtr -> CellFront() -> GetFunc() == G_PI) {
-                            // FIXME: set input to BFS corresponding to the input order of cell
                             BFSPtr -> SetInputGate(cellGatePtr->GetID()-1, subjGatePtr);
                             //cout << "Set " << subjGatePtr->GetName() << " as input" << cellGatePtr->GetID()-1 << " to " << cell_to_map->GetName() << endl;
                             //PAUSE();
@@ -1228,7 +1226,6 @@ int main(int argc, char** argv)
                 for(int j=0;j<minDelayBFSPtr->No_Fanin();++j) {
                     //To be revised
                     //if(minDelayBFSPtr -> Fanin(j) -> GetFunc() != G_PI) {
-                    // FIXME: correct input order of mapping cell
                         MCellPtr -> AddInputList(minDelayBFSPtr->Fanin(j)->GetMCell());
                     //}
                 }
