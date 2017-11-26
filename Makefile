@@ -10,7 +10,7 @@ DEL_FILE	= rm -fv
 HEADERS = pause.h
 SOURCES = main.cc
 OBJECTS = main.o
-TARGET = map 
+TARGET = hw2
 
 ##### Implicit rules
 .SUFFIXES: .o .cpp .cc .cxx
