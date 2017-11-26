@@ -13,6 +13,7 @@
 #include <algorithm>
 #include "pause.h"
 #include <sstream>
+#include <cassert>
 using namespace std;
 
 enum GATEFUNC {G_PI, G_PO, G_PPI, G_PPO, G_NOT, G_AND, G_NAND, G_OR, G_NOR, G_DFF, G_BUF, G_BAD};
@@ -313,7 +314,7 @@ void clean_ss(stringstream& ss)
 
 char conv_idx_to_letter(int n)
 {
-    assert(n >= 1 && n <= 26)
+    assert(n >= 0 && n <= 25);
     return "abcdefghijklmnopqrstuvwxyz"[n];
 }
 
@@ -1358,34 +1359,6 @@ int main(int argc, char** argv)
             MCellList[i] -> CalcSlack();
         }
     }
-    //cout << endl;
-    //cout << "//MCell Circuit: " << endl;
-    //for(unsigned i=0;i < MCellList.size();++i) {
-    //    cout << ">" << MCellList[i] -> GetName() << ": " << MCellList[i]->GetFunc() << "(" << MCellList[i]->GetDelay()<<")"<< endl;
-    //    cout << "Count: " << MCellList[i]->GetCount() << endl;
-    //    cout << "Schedule: " << MCellList[i]->Is_Schedule() << endl;
-    //    cout << "Level: " << MCellList[i] -> GetLevel() << endl;
-    //    cout << "ArriTime: " << MCellList[i] -> GetArriTime() << endl;
-    //    cout << "ReqTime: " << MCellList[i] -> GetReqTime() << endl;
-    //    cout << "Slack: " << MCellList[i] -> GetSlack() << endl;
-    //    for(int j=0;j < MCellList[i]->No_Fanin();++j) {
-    //        cout << MCellList[i]->Fanin(j)->GetName() << " =>" << endl;
-    //    }
-    //    for(int j=0;j < MCellList[i]->No_Fanout();++j) {
-    //        cout << "=> " << MCellList[i]->Fanout(j)->GetName() << endl;
-    //    }
-    //    cout << "----\n";
-    //}
-
-    //cout << "\n//Pirmary INPUT: " << endl;
-    //for(unsigned i = 0;i < MCellPIList.size(); ++i) {
-    //    cout << MCellPIList[i] -> GetName() << endl;
-    //}
-    //cout << "\n//Pirmary OUTPUT: " << endl;
-    //for(unsigned i = 0;i < MCellPOList.size(); ++i) {
-    //    cout << MCellPOList[i] -> GetName() << endl;
-    //}
-    //cout << endl;
     
     // calculate total net number
     int numNet = 0;
@@ -1400,7 +1373,7 @@ int main(int argc, char** argv)
     cout << "# Total Net: " << numNet << endl;
 
 
-    //Output file
+    // output mapping circuit in Berkeley Logic Interchange Format (.blif)
     cout << "> Output mapping circuit to " << argv[3] << endl;
     ofs << ".model " << argv[3] << endl;
     ofs << ".inputs ";
@@ -1419,15 +1392,15 @@ int main(int argc, char** argv)
            MCellList[i] -> Is_Schedule() == true) {
             MappingCELL* cur_mcell = MCellList[i];
             ofs << ".gate " << cur_mcell->GetFunc() << " "; 
-            //sort inputs of a MCell
-            // MCellList[i] -> SortInputList();
-            ofs << MCellList[i] -> Fanin(0) -> GetName();
-            for(int j = 1;j < MCellList[i]->No_Fanin(); ++j) {
-                ofs << ", " << MCellList[i] -> Fanin(j) -> GetName();
+            // sort inputs of a MCell
+            for(int j = 0;j < MCellList[i]->No_Fanin(); ++j) {
+                ofs << conv_idx_to_letter(j) << "="<< cur_mcell->Fanin(j)->GetName() << " ";
             }
-            ofs << ")" << endl;
+            ofs << "O=" << cur_mcell->GetName() << endl;
         }
     }
+    ofs << ".end" << endl; // end of blif file
+
     for(unsigned i = 0;i < MCellPOList.size(); ++i) {
         if(MCellPOList[i] -> GetSlack() == 0) {
             outputMCellPtr = MCellPOList[i];
