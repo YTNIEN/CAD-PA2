@@ -83,8 +83,6 @@ class MappingCELL
         bool Is_Schedule() const {return Schedule;}
         int GetCount() const {return Count;}
         GATE* GetMappedGate() {return _MappedGatePtr;}
-        //Method
-        void SortInputList();
 };
 
 class GATE
@@ -307,15 +305,16 @@ inline bool CompareName(const MappingCELL* first, const MappingCELL* second)
     return (firstNum < secondNum);
 }
 
-void MappingCELL::SortInputList()
-{
-    std::sort(InputList.begin(), InputList.end(), CompareName);
-}
-
 void clean_ss(stringstream& ss)
 {
     ss.str("");
     ss.clear();
+}
+
+char conv_idx_to_letter(int n)
+{
+    assert(n >= 1 && n <= 26)
+    return "abcdefghijklmnopqrstuvwxyz"[n];
 }
 
 typedef CELL* CELLPTR;
@@ -325,7 +324,7 @@ typedef list<GATE*> ListofGate;
 int main(int argc, char** argv)
 {   
     clock_t time_init, time_end;
-    cout << "//Compile Time: " << __TIME__ << endl;
+    cout << "# Compile Time: " << __TIME__ << endl;
     time_init = clock();
     //Setup File
     ifstream ifsCkt(argv[1], ifstream::in);
@@ -342,9 +341,9 @@ int main(int argc, char** argv)
         exit(-1);
     }
     else if(!ifsCkt || !ifsCell || !ofs || !ofs_path) {
-        if(!ifsCkt) cerr << "Cannot open file: " << argv[1] << endl;
-        if(!ifsCell) cerr << "Cannot open file: " << argv[2] << endl;
-        if(!ofs) cerr << "Cannot create file: " << argv[3] << endl;
+        if(!ifsCkt) cerr << "ERROR: Cannot open file: " << argv[1] << endl;
+        if(!ifsCell) cerr << "ERROR: Cannot open file: " << argv[2] << endl;
+        if(!ofs) cerr << "ERROR: Cannot create file: " << argv[3] << endl;
         ifsCkt.close(); 
         ifsCell.close();
         ofs.close();
@@ -369,7 +368,8 @@ int main(int argc, char** argv)
     if(idx != string::npos) {circuitName = circuitName.substr(idx+1);}
     idx = circuitName.find(".bench");
     if(idx != string::npos) { circuitName = circuitName.substr(0, idx); }
-    cout << "//Circuit Name: " << circuitName << endl;
+    cout << "# Circuit Name: " << circuitName << endl;
+    cout << "> Parse subject circuit" << endl;
     
     string gateName;
     string gateFunc;
@@ -477,7 +477,7 @@ int main(int argc, char** argv)
         }
     }
 
-    cout << "\n//Second Parsing" << endl;
+    cout << "> Second parsing of subject circuit" << endl;
     //PAUSE();
     string inputNameStr;
     string inputName;
@@ -586,7 +586,7 @@ int main(int argc, char** argv)
     }
 
     //Parse the standard cell library
-    cout << "\n//Parse cell library file: " << argv[2] << endl;
+    cout << "> Parse cell library file: " << argv[2] << endl;
     int cellDelay = 0;
     int cellInputNum = 0;
     string cellName;
@@ -781,7 +781,7 @@ int main(int argc, char** argv)
     
     map<string, GATE*>::iterator gateIterInCell;
     
-    cout << "\n//Re-Parse cell library file: " << argv[2] << endl;
+    cout << "> Second parsing of cell library" << endl;
     //PAUSE();
     // second parsing of cell library
     while(!ifsCell.eof()) {
@@ -1010,7 +1010,7 @@ int main(int argc, char** argv)
     for(unsigned i = 0;i < gateList.size(); ++i) {
         if(maxLevel <= gateList[i] -> GetLevel()) {maxLevel = gateList[i] -> GetLevel();}
     }
-    cout << "//MaxLevel: " << maxLevel << endl;
+    cout << "# MaxLevel: " << maxLevel << endl;
 
     //traverse every gate to collect the root of every tree
     list<GATE*> treeRoot;
@@ -1036,11 +1036,12 @@ int main(int argc, char** argv)
     list<BFS*> BFSQueue;
     list<BFS*> BFSOfGate; 
     list<MappingCELL*> MCellQueue;
-    // NEW Mapped Cells
+    // container for new mapping cell
     vector<MappingCELL*> MCellPIList;
     vector<MappingCELL*> MCellPOList;
     vector<MappingCELL*> MCellList;
-    // for each root gate of a tree
+
+    // for each root gate of a mapping tree 
     for(listItor = treeRoot.begin();listItor != treeRoot.end(); ++listItor) { 
         GATE* gatePtr = 0;
         GATEPTR rootGatePtr = *listItor;
@@ -1131,7 +1132,6 @@ int main(int argc, char** argv)
                             //}
                             //cout << endl;
                             BFSPtr -> SetCell(cellList[j]);
-                            cout << cell_to_map->GetName() << endl;
                             BFSPtr -> CalcMaxDelay();
                             BFSOfGate.push_back(BFSPtr);
                             BFSList.pop_front();
@@ -1244,16 +1244,16 @@ int main(int argc, char** argv)
                 }
             }
         }
-        //push back the MCell to root gate
+        // connect outputs of mapping cells backward starting from root gate
         MCellQueue.push_back(rootGatePtr->GetMCell());
         while(!MCellQueue.empty()) {
             MappingCELL* MCellPtr = MCellQueue.front();
             MCellPtr -> ResetCount();
-            MCellPtr -> SetSchedule();
+            MCellPtr -> SetSchedule(); // mark that this mapping cell is in (used) the mapping circuit
             MCellQueue.pop_front();
             for(int i = 0;i < MCellPtr->No_Fanin(); ++i) {
                 MCellPtr -> Fanin(i) -> AddOutputList(MCellPtr);
-                //if some input MCell in not from the other trees, push it
+                // push all the input mapping cells which are not from other mapping tree
                 if(MCellPtr->Fanin(i)->GetMappedGate()->No_Fanout() == 1) {
                     MCellQueue.push_back(MCellPtr->Fanin(i));
                 }
@@ -1264,7 +1264,7 @@ int main(int argc, char** argv)
     MappingCELL* inputMCellPtr = 0;
     MappingCELL* outputMCellPtr = 0;
     int inputLevel = 0, outputLevel = 0;
-    //Levelize MCell CKT
+    // levelize mapping cell circuit
     for(unsigned i = 0;i < MCellPIList.size(); ++i) {
         MCellPIList[i] -> SetLevel(0);
         MCellQueue.push_back(MCellPIList[i]);
@@ -1287,14 +1287,14 @@ int main(int argc, char** argv)
             }
         }
     }
-    //traverse every MCell we collected, recording maximun level
+    // traverse every MCell collected, recording maximun level
     int maxMCellLevel = -1;
     for(unsigned i = 0;i < MCellList.size(); ++i) {
         if(MCellList[i] -> Is_Schedule() == true && maxMCellLevel < (MCellList[i]->GetLevel())) {
             maxMCellLevel = MCellList[i] -> GetLevel();
         }
     }
-    cout << "//Max Level of MCell: " << maxMCellLevel << endl;
+    cout << "# Max Level of MCell: " << maxMCellLevel << endl;
 
     list<MappingCELL*> *MCellQueuePtr = new list<MappingCELL*>[maxMCellLevel + 1];
     list<MappingCELL*>::iterator MCellQueueIter;
@@ -1321,11 +1321,11 @@ int main(int argc, char** argv)
             }
         }
     }
-    cout << "//Max ArriTime: " << maxMCellArriTime << endl;
+    cout << "# Max ArriTime: " << maxMCellArriTime << endl;
 
-    //Calculate require time
+    // calculate require time
     int minMCellReqTime = INT_MAX;
-    //set PO require time = maxMCellArriTime
+    // set PO require time to maxMCellArriTime
     for(unsigned i = 0;i < MCellPOList.size();++i) { MCellPOList[i] -> SetReqTime(maxMCellArriTime);}
     for(int i = maxMCellLevel;i >= 0; --i) {
         for(MCellQueueIter=MCellQueuePtr[i].begin();MCellQueueIter!=MCellQueuePtr[i].end();++MCellQueueIter) {
@@ -1340,21 +1340,23 @@ int main(int argc, char** argv)
                     }
                 }
             }
+            // PO has a fanout count of zero 
             else {minOutputReqTime = maxMCellArriTime;}
             inputMCellPtr -> SetReqTime(minOutputReqTime);
+            // update minimum require time of cell
             if(minMCellReqTime > (inputMCellPtr -> GetReqTime())) {
                 minMCellReqTime = inputMCellPtr -> GetReqTime();
             }
         }
     }
-    //cout << "MinReqTime: " << minMCellReqTime << endl;
-    //PAUSE();
+    // cout << "MinReqTime: " << minMCellReqTime << endl;
+    // PAUSE();
 
-    //Calculate Slacks
+    // calculate slack
     for(unsigned i = 0;i < MCellList.size(); ++i) {
         if(MCellList[i]->Is_Schedule() == true) {
             MCellList[i] -> CalcSlack();
-        }   
+        }
     }
     //cout << endl;
     //cout << "//MCell Circuit: " << endl;
@@ -1385,7 +1387,7 @@ int main(int argc, char** argv)
     //}
     //cout << endl;
     
-    //Calculate totoal net number
+    // calculate total net number
     int numNet = 0;
     for(unsigned i = 0;i < gateList.size(); ++i) {
         if(gateList[i] -> GetFunc() != G_PO) {
@@ -1395,40 +1397,30 @@ int main(int argc, char** argv)
             numNet += gateList[i] -> No_Fanout();
         }
     }
-    cout << "//Total Net: " << numNet << endl;
+    cout << "# Total Net: " << numNet << endl;
 
 
     //Output file
-    ofs << maxMCellArriTime << endl; 
-    ofs << endl;
-    std::sort(MCellPIList.begin(), MCellPIList.end(), CompareName);
-    for(unsigned i = 0;i < MCellPIList.size(); ++i) {ofs << "INPUT(" << MCellPIList[i] -> GetName() << ")" << endl;}
+    cout << "> Output mapping circuit to " << argv[3] << endl;
+    ofs << ".model " << argv[3] << endl;
+    ofs << ".inputs ";
+    std::sort(MCellPIList.begin(), MCellPIList.end(), CompareName); // sort mapping cell
+    for(unsigned i = 0;i < MCellPIList.size(); ++i) {ofs << MCellPIList[i] -> GetName() << " ";}
     ofs << endl;
     std::sort(MCellPOList.begin(), MCellPOList.end(), CompareName);
+    ofs << ".outputs ";
     for(unsigned i = 0;i < MCellPOList.size(); ++i) {
-        //string::size_type firstPosNotAlphabet;
-        //string::size_type lastPosNotAlphabet;
-        //string POName = MCellPOList[i] -> GetName();
-        ////below remove any alphabet front and back
-        //firstPosNotAlphabet = POName.find_first_not_of("_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ");
-        //if(firstPosNotAlphabet != string::npos) {
-        //    POName.erase(0, firstPosNotAlphabet);
-        //}
-        //lastPosNotAlphabet = POName.find_last_not_of("_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ");
-        //if(lastPosNotAlphabet != string::npos) {
-        //    POName.erase(lastPosNotAlphabet+1);
-        //}
-        //ofs << "OUTPUT(" << POName << ")" << endl;
-        ofs << "OUTPUT(" << MCellPOList[i] -> Fanin(0) -> GetName() << ")" << endl;
+        ofs << MCellPOList[i] -> Fanin(0) -> GetName() << " ";
     }
     ofs << endl;
     std::sort(MCellList.begin(), MCellList.end(), CompareName);
     for(unsigned i = 0;i < MCellList.size(); ++i) {
         if(MCellList[i] -> GetFunc() != "G_PI" &&  MCellList[i] -> GetFunc() != "G_PO" &&
-                MCellList[i] -> Is_Schedule() == true) {
-            ofs << MCellList[i] -> GetName() << " = " << MCellList[i] -> GetFunc() << "(";
+           MCellList[i] -> Is_Schedule() == true) {
+            MappingCELL* cur_mcell = MCellList[i];
+            ofs << ".gate " << cur_mcell->GetFunc() << " "; 
             //sort inputs of a MCell
-            MCellList[i] -> SortInputList();
+            // MCellList[i] -> SortInputList();
             ofs << MCellList[i] -> Fanin(0) -> GetName();
             for(int j = 1;j < MCellList[i]->No_Fanin(); ++j) {
                 ofs << ", " << MCellList[i] -> Fanin(j) -> GetName();
