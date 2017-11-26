@@ -1399,7 +1399,7 @@ int main(int argc, char** argv)
             ofs << "O=" << cur_mcell->GetName() << endl;
         }
     }
-    ofs << ".end" << endl; // end of blif file
+    ofs << ".end" << endl << endl; // end of blif file
 
     for(unsigned i = 0;i < MCellPOList.size(); ++i) {
         if(MCellPOList[i] -> GetSlack() == 0) {
@@ -1408,8 +1408,10 @@ int main(int argc, char** argv)
         }
     }
     //cout << outputMCellPtr -> GetName() << endl;
+    // find the cirtical path, which consists of mapping cells with zero slack
     while(outputMCellPtr->No_Fanin() != 0) {
         for(int i = 0;i < outputMCellPtr -> No_Fanin(); ++i) {
+            // first input mapping cell with zero slack is taken into critical path
             if(outputMCellPtr -> Fanin(i) -> GetSlack() == 0) {
                 outputMCellPtr = outputMCellPtr -> Fanin(i);
                 MCellQueue.push_back(outputMCellPtr);
@@ -1418,13 +1420,15 @@ int main(int argc, char** argv)
         }
     }
 
-    ofs << endl;
+    // output path info (critical path, critical delay)
+    ofs_path << maxMCellArriTime << endl;
     while(!MCellQueue.empty()) {
         outputMCellPtr = MCellQueue.back();
         MCellQueue.pop_back();
-        ofs << outputMCellPtr -> GetName() << " ";
+        ofs_path << outputMCellPtr -> GetName() << " ";
         //cout << outputMCellPtr -> GetName() << " ";
     }
+    ofs_path << "\n" << endl;
 
 #ifdef DEBUG
     ////Print zone
